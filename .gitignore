@@ -1,0 +1,18 @@
+# Secrets and local settings
+.env
+.env.local
+**/.env
+**/.env.local
+
+# Dependencies and build output
+node_modules/
+dist/
+__pycache__/
+*.tsbuildinfo
+
+# Runtime state belongs on the server's volume, never in the repository
+backend/data/pool/
+backend/data/db.json
+
+# The full-precision model (87 MB) is not used; config.json points to the int8 one
+backend/model/deploy/dragonfruit.onnx

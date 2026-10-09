@@ -126,6 +126,18 @@ fly ssh sftp shell
 
 Keep to one machine (`--ha=false`): a Fly volume belongs to a single machine, and the expert decisions are held by one process. Check Fly's current pricing; the machine and the volume are billed.
 
+#### Render, step by step
+
+`render.yaml` in the project root is a blueprint: Docker service, Singapore region, the `starter` plan, a 1 GB disk at `/data`, health check on `/api/health`.
+
+1. Put the project in a Git repository (GitHub or GitLab) and push it. Render deploys from a repository.
+2. In Render choose **New > Blueprint**, pick the repository, and enter `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` when asked. Render hands these to the Docker build as build arguments, which is how the frontend gets them. The anon key is public by design.
+3. Open the address Render gives you (`https://dragonfruit-grading.onrender.com` or similar). To fill the review queue, copy photos into `/data/pool` (Render's shell, or SFTP over SSH from the service's Connect menu).
+
+- **Free plan:** works only for Quick grade and the Inventory (that data is in Supabase). A free service has no persistent disk, so the History, the memory bank and the review pool are erased on every restart, and it sleeps after 15 minutes without traffic, so the next visitor waits while the model loads. Use a paid plan with the disk for the review queue.
+- Measured memory is about 200 MB at most, so the smallest paid instance is enough; confirm the instance size on Render's pricing page.
+- A service with a disk runs as a single instance, which is what this app needs.
+
 ### Option B: frontend on Vercel or Netlify, backend in a container
 
 Use this when you want the frontend on a CDN. The rest of this section is for option B; the backend settings table also applies to option A.

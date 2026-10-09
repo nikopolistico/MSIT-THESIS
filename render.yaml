@@ -1,0 +1,26 @@
+# Render blueprint for the one-container deployment. Steps are in README.md, "Deploy".
+# A persistent disk needs a PAID instance: on the free plan the disk is erased on every restart
+# and the service sleeps after 15 minutes without traffic.
+services:
+  - type: web
+    name: dragonfruit-grading
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    region: singapore          # the closest Render region to the Philippines
+    plan: starter              # a paid plan, which is what allows the disk below
+    healthCheckPath: /api/health
+    disk:
+      name: dragonfruit-data   # expert decisions (db.json) and the review pool live here
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: DATA_DIR
+        value: /data
+      # Render passes the variables of a Docker service to the build as build arguments, which is
+      # how the frontend gets the Supabase address. The anon key is public by design (it is also
+      # visible in the browser). You are asked for both values when the blueprint is created.
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
