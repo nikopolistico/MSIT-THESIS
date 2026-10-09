@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-09",
+  "split": "test",
+  "model": "dragonfruit_int8.onnx",
+  "n": 458,
+  "accuracy": 0.9978165938864629,
+  "macroF1": 0.9977714387591371,
+  "tasks": {
+    "maturity": {
+      "n": 225,
+      "accuracy": 0.9955555555555555,
+      "macroF1": 0.9955428775182742
+    },
+    "quality": {
+      "n": 233,
+      "accuracy": 1.0,
+      "macroF1": 1.0
+    }
+  }
+}

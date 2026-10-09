@@ -1,0 +1,13 @@
+**/node_modules
+**/dist
+**/__pycache__
+**/.vscode
+# Local settings and keys never go into an image. The Supabase address and anon key are passed as
+# build arguments instead.
+**/.env
+**/.env.local
+# Runtime state belongs on the server's volume, not in the image.
+backend/data/pool
+backend/data/db.json
+# The full-precision model is not used; config.json points to the int8 one.
+backend/model/deploy/dragonfruit.onnx

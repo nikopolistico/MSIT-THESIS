@@ -1,0 +1,11 @@
+# Only if the frontend is hosted on Netlify. The backend cannot run there: it needs a disk that
+# survives restarts. Set VITE_API_BASE_URL (https) in the Netlify site settings.
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# The app uses history-mode routes, so every path must serve index.html.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

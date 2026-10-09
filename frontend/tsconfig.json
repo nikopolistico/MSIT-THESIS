@@ -1,0 +1,16 @@
+{
+  "files": [],
+  "compilerOptions": {
+    // Read by the shadcn-vue CLI; the real settings live in tsconfig.app.json.
+    "baseUrl": ".",
+    "paths": { "@/*": ["./src/*"] }
+  },
+  "references": [
+    {
+      "path": "./tsconfig.node.json"
+    },
+    {
+      "path": "./tsconfig.app.json"
+    }
+  ]
+}

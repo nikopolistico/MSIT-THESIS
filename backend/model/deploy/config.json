@@ -1,0 +1,34 @@
+{
+  "model_file": "dragonfruit_int8.onnx",
+  "trained_with_label_fraction": 1.0,
+  "input": {
+    "size": 224,
+    "mean": [0.485, 0.456, 0.406],
+    "std": [0.229, 0.224, 0.225],
+    "steps": [
+      "fix phone rotation (EXIF)",
+      "crop centre square",
+      "resize to 224x224",
+      "scale pixels to 0-1",
+      "normalise with mean/std",
+      "layout 1x3xHxW (RGB)"
+    ]
+  },
+  "outputs": ["p_maturity", "p_quality", "embedding"],
+  "classes": {
+    "maturity": ["immature", "mature"],
+    "quality": ["fresh", "defective"]
+  },
+  "ood": {
+    "reference_file": "ref_embeddings.npy",
+    "k": 5,
+    "threshold": 0.996
+  },
+  "confidence_threshold": 0.7,
+  "actions": {
+    "immature|fresh": "Do not harvest yet. Re-check later.",
+    "immature|defective": "Do not harvest yet. Show the fruit to the expert.",
+    "mature|fresh": "Harvest. Sort for the fresh market.",
+    "mature|defective": "Harvest and set aside for sorting."
+  }
+}

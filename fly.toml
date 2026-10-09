@@ -1,0 +1,35 @@
+# Fly.io settings for the one-container deployment. Steps are in README.md, "Deploy".
+app = "dragonfruit-grading"   # app names are global: change it if this one is taken
+primary_region = "sin"        # Singapore, the closest region to the Philippines
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  DATA_DIR = "/data"
+
+# Expert decisions (db.json) and the review pool live on this volume, so they survive restarts.
+# Create it once:  fly volumes create dragonfruit_data --region sin --size 1
+[mounts]
+  source = "dragonfruit_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = "off"   # a stopped machine would need ~10 s to load the model again
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/api/health"
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "40s"
+
+# Measured: about 130 MB at start and 200 MB with 20 gradings at once, so 512 MB would also work.
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory = "1gb"

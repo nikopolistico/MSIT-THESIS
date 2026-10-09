@@ -1,0 +1,271 @@
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Public+Sans:wght@400;500;600;700&display=swap');
+
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn-vue/tailwind.css';
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Palette comes from a dragon fruit: pale flesh (ground), black seeds (ink), magenta skin (brand),
+ * green scale tips (good), saffron (caution),
+ * brick (defect). The default Tailwind ramps are replaced so existing stone-/brand-/emerald-/
+ * amber-/red- classes pick it up without touching every component.
+ */
+@theme {
+  --font-display: 'Bricolage Grotesque', 'Public Sans', sans-serif;
+
+  --color-stone-50: #fbf6f8;
+  --color-stone-100: #f5ecf0;
+  --color-stone-200: #ebdde4;
+  --color-stone-300: #d9c6cf;
+  --color-stone-400: #b29ca8;
+  --color-stone-500: #75606b;
+  --color-stone-600: #5a4752;
+  --color-stone-700: #43323c;
+  --color-stone-800: #2e202a;
+  --color-stone-900: #1f1219;
+  --color-stone-950: #150b11;
+
+  --color-brand-50: #fff0f5;
+  --color-brand-100: #ffdce8;
+  --color-brand-500: #d81b60;
+  --color-brand-600: #c2185b;
+  --color-brand-700: #a4134c;
+
+  --color-emerald-100: #e3f1d8;
+  --color-emerald-500: #5a9a2e;
+  --color-emerald-600: #4a8226;
+  --color-emerald-700: #3b691f;
+  --color-emerald-800: #2f5419;
+
+  --color-amber-50: #fff7e0;
+  --color-amber-100: #fdebb8;
+  --color-amber-500: #e0a100;
+  --color-amber-600: #bf8500;
+  --color-amber-700: #946700;
+  --color-amber-800: #6f4e00;
+
+  --color-red-50: #fdecea;
+  --color-red-100: #fad7d2;
+  --color-red-200: #f3b5ac;
+  --color-red-500: #c0392b;
+  --color-red-600: #a62e22;
+  --color-red-700: #8a261c;
+  --color-red-800: #6e1f17;
+}
+
+@theme inline {
+  --font-sans: 'Public Sans', system-ui, sans-serif;
+  --font-heading: var(--font-display);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  /* Tight radii: 4px controls, 8px panels. */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --background: #fbf6f8;
+  --foreground: #1f1219;
+  --card: #ffffff;
+  --card-foreground: #1f1219;
+  --popover: #ffffff;
+  --popover-foreground: #1f1219;
+  --primary: #c2185b;
+  --primary-foreground: #ffffff;
+  --secondary: #f5ecf0;
+  --secondary-foreground: #2e202a;
+  --muted: #f5ecf0;
+  --muted-foreground: #75606b;
+  --accent: #f5ecf0;
+  --accent-foreground: #2e202a;
+  --destructive: #a62e22;
+  --border: #ebdde4;
+  --input: #d9c6cf;
+  --ring: #d81b60;
+  --chart-1: #c2185b;
+  --chart-2: #4a8226;
+  --chart-3: #b29ca8;
+  --chart-4: #bf8500;
+  --chart-5: #43323c;
+  --radius: 0.25rem;
+  --sidebar: #8e0f44;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #5a9a2e;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #a3154f;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #a3154f;
+  --sidebar-ring: #ffffff;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  kbd {
+    font-family: inherit;
+    @apply rounded border border-stone-300 bg-stone-100 px-1 text-[11px] font-medium text-stone-600;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-stone-300 bg-white px-3.5 py-2 text-sm font-medium text-stone-800 transition-colors hover:bg-stone-100 disabled:pointer-events-none disabled:opacity-45;
+  }
+  .btn-primary {
+    @apply border-brand-600 bg-brand-600 text-white hover:bg-brand-700;
+  }
+  .btn-danger {
+    @apply border-red-600 bg-red-600 text-white hover:bg-red-700;
+  }
+  .panel {
+    @apply rounded-xl border border-stone-200 bg-white;
+  }
+  /* Hairline-divided grid: children are the cells (the gap shows the background). */
+  .ruled {
+    @apply grid gap-px overflow-hidden rounded-xl border border-stone-200 bg-stone-200;
+  }
+  .ruled > * {
+    @apply bg-white;
+  }
+}
+
+@layer components {
+  /* Ledger heading: a heavy rule marks where a section starts. */
+  .section-title {
+    @apply flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-t-2 border-stone-900 pt-2.5 pb-3;
+  }
+  .section-title > h2 {
+    @apply text-lg font-semibold;
+  }
+  .section-title > p {
+    @apply text-sm text-stone-600;
+  }
+  .btn:not(:disabled),
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@layer components {
+  /* A row of tiny black seeds: the divider under every page title. */
+  .seed-rule {
+    height: 8px;
+    background: radial-gradient(
+        ellipse 1.6px 2.6px at 7px 4px,
+        var(--color-stone-900) 98%,
+        transparent 100%
+      )
+      0 0 / 14px 8px repeat-x;
+  }
+  /* Green scale tips along the sidebar edge, like the skin of the fruit. */
+  .scale-tips {
+    width: 12px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='28' viewBox='0 0 12 28'%3E%3Cpath d='M0 0L12 14L0 28Z' fill='%235a9a2e'/%3E%3C/svg%3E");
+    background-size: 12px 28px;
+    background-repeat: repeat-y;
+  }
+}
+/*
+ ---break---
+ */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  /* Live scan: the line sweeps the frame while the model looks for a fruit. */
+  .scan-line {
+    position: absolute;
+    inset-inline: 0;
+    top: 8%;
+    height: 2px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      #f06292 20%,
+      #ff80ab 50%,
+      #f06292 80%,
+      transparent
+    );
+    box-shadow: 0 0 14px 3px rgb(216 27 96 / 0.55);
+    animation: scan-sweep 2.2s ease-in-out infinite alternate;
+  }
+  @keyframes scan-sweep {
+    to {
+      top: 90%;
+    }
+  }
+  .scan-flash {
+    animation: scan-flash 0.35s ease-out forwards;
+  }
+  @keyframes scan-flash {
+    from {
+      opacity: 0.9;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+}

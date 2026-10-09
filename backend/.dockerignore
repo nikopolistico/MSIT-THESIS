@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.venv/
+# Runtime state belongs on the server's volume, not in the image.
+data/pool/
+data/db.json
+# The full-precision model is not used; config.json points to the int8 one.
+model/deploy/dragonfruit.onnx
