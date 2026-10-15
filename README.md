@@ -6,7 +6,9 @@ Expert-in-the-loop maturity and quality grading of dragon fruit.
 MY-THESIS/
 ├── frontend/   Vue 3 + TypeScript + Vite + Pinia + Vue Router + Tailwind 4 + shadcn-vue + Chart.js
 └── backend/    FastAPI server that runs the ONNX model
-    ├── main.py
+    ├── main.py         assembles the app (CORS, media, frontend)
+    ├── grading/        config, model (ONNX), references (OOD), store (decisions), scoring, service, routes (/api)
+    ├── evaluate.py
     ├── requirements.txt
     ├── extract_reference.py
     ├── model/deploy/   dragonfruit_int8.onnx, ref_embeddings.npy, splits.csv, config.json

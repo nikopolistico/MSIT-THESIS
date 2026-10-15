@@ -30,6 +30,7 @@ COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/main.py ./
+COPY backend/grading ./grading
 COPY backend/model ./model
 COPY backend/data/reference ./data/reference
 COPY --from=web /web/dist ./static

@@ -19,7 +19,8 @@ from pathlib import Path, PurePosixPath
 import numpy as np
 from PIL import Image
 
-from main import CLASSES, DEPLOY, cfg, infer
+from grading.config import CLASSES, DEPLOY, cfg
+from grading.model import infer
 
 SPLIT = "test"
 
