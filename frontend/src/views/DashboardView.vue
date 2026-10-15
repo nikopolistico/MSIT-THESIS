@@ -341,6 +341,8 @@ const delta = computed(() => {
                   <img
                     :src="d.imageUrl"
                     :alt="d.itemId"
+                    loading="lazy"
+                    decoding="async"
                     class="size-10 shrink-0 rounded-md object-cover"
                   />
                   <div class="min-w-0 flex-1">

@@ -34,6 +34,8 @@ const shown = computed(() => props.neighbors.filter((n) => labelOf(n) !== null).
         <img
           :src="n.imageUrl"
           :alt="`Reference ${n.id}`"
+          loading="lazy"
+          decoding="async"
           class="aspect-square w-full object-cover"
         />
         <div class="space-y-1.5 p-2.5">

@@ -76,7 +76,7 @@ const mobileLabel: Record<string, string> = { '/dashboard': 'Dashboard', '/grade
 
   <!-- Mobile bottom bar -->
   <nav
-    class="fixed inset-x-0 bottom-0 z-20 flex border-t border-stone-200 bg-white md:hidden"
+    class="fixed inset-x-0 bottom-0 z-20 flex border-t border-stone-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden"
     aria-label="Main"
   >
     <RouterLink

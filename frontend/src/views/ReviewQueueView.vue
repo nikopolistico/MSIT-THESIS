@@ -73,6 +73,8 @@ onMounted(() => {
               <img
                 :src="item.imageUrl"
                 :alt="`Fruit ${item.id}`"
+                loading="lazy"
+                decoding="async"
                 class="size-16 rounded-md object-cover md:size-[4.5rem]"
               />
               <div class="grid gap-2">

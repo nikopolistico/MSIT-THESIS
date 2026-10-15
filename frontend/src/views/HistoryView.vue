@@ -175,7 +175,13 @@ function exportCsv() {
               </tr>
               <tr v-for="d in filtered" :key="d.id" class="align-top">
                 <td class="px-4 py-3">
-                  <img :src="d.imageUrl" :alt="d.itemId" class="size-12 rounded-lg object-cover" />
+                  <img
+                    :src="d.imageUrl"
+                    :alt="d.itemId"
+                    loading="lazy"
+                    decoding="async"
+                    class="size-12 rounded-lg object-cover"
+                  />
                   <span class="mt-1 block max-w-32 truncate text-xs text-stone-500">{{
                     d.itemId
                   }}</span>
