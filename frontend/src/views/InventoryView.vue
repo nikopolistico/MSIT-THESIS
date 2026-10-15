@@ -1,15 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch, type Component } from 'vue'
-import {
-  Apple,
-  ImageOff,
-  Package,
-  RefreshCw,
-  ShieldAlert,
-  ShieldCheck,
-  Sprout,
-  Trash2,
-} from '@lucide/vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { ImageOff, Package, RefreshCw, ShieldCheck, Sprout, Trash2 } from '@lucide/vue'
 import {
   deleteGrading,
   getGradings,
@@ -29,7 +20,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { BIN_ACTIONS, labelDef, TASK_KEYS, TASKS, type LabelDef, type Tone } from '@/config/labels'
+import { BIN_ACTIONS, labelDef, TASK_KEYS, TASKS } from '@/config/labels'
+import { maturityIcon, qualityIcon, toneText } from '@/config/tones'
+import { buildBins } from '@/utils/bins'
 import { errorMessage, formatDateTime, pct } from '@/utils/format'
 
 const rows = ref<InventoryRow[]>([])
@@ -106,64 +99,7 @@ const advice = (g: Grading) => BIN_ACTIONS[`${g.maturity}|${g.quality}`] ?? ''
 
 const total = computed(() => rows.value.reduce((a, r) => a + r.count, 0))
 
-// A bin is one maturity + quality combination, i.e. a place the fruit is sent after grading.
-const toneColor: Record<Tone, string> = {
-  good: '#4a8226',
-  warn: '#bf8500',
-  bad: '#a62e22',
-  neutral: '#b29ca8',
-}
-const toneText: Record<Tone, string> = {
-  good: 'text-emerald-700',
-  warn: 'text-amber-700',
-  bad: 'text-red-700',
-  neutral: 'text-stone-600',
-}
-// Ripe fruit gets the fruit icon, unripe the seedling; quality is a shield that is ticked or flagged.
-const maturityIcon: Record<Tone, Component> = {
-  good: Apple,
-  warn: Sprout,
-  bad: Sprout,
-  neutral: Sprout,
-}
-const qualityIcon: Record<Tone, Component> = {
-  good: ShieldCheck,
-  warn: ShieldAlert,
-  bad: ShieldAlert,
-  neutral: ShieldCheck,
-}
-
-interface Bin {
-  key: string
-  maturity: LabelDef
-  quality: LabelDef
-  count: number
-  share: number
-  color: string
-  action: string
-}
-
-const bins = computed<Bin[]>(() => {
-  const out: Bin[] = []
-  // Ripe fruit first: those are the bins that lead to a harvest decision.
-  for (const m of [...TASKS.maturity.labels].reverse()) {
-    for (const q of TASKS.quality.labels) {
-      const count =
-        rows.value.find((r) => r.maturity === m.value && r.quality === q.value)?.count ?? 0
-      // Quality sets the hue; unripe fruit is shown paler.
-      out.push({
-        key: `${m.value}|${q.value}`,
-        maturity: m,
-        quality: q,
-        count,
-        share: total.value ? count / total.value : 0,
-        color: `color-mix(in srgb, ${toneColor[q.tone]} ${m.tone === 'good' ? 100 : 40}%, white)`,
-        action: BIN_ACTIONS[`${m.value}|${q.value}`] ?? '',
-      })
-    }
-  }
-  return out
-})
+const bins = computed(() => buildBins(rows.value, total.value))
 
 /** Totals of one task regardless of the other, e.g. all mature fruit. */
 const subtotals = computed(() =>
