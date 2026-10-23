@@ -45,9 +45,10 @@ An ONNX vision model grades each fruit from a front and back photo, flags images
 |---|---|---|
 | 📷 | **Quick grade** | Photograph the front and back of one fruit and get its maturity and quality in seconds. Works with the live camera Scan, a photo, or an upload. |
 | 🛡️ | **Out-of-distribution check** | Each photo is compared against 2,131 reference images. Anything the model doesn't recognise is rejected instead of guessed. |
-| 🧑‍🔬 | **Expert review queue** | Unlabeled images are ranked by uncertainty (entropy) so experts review the hardest cases first, with keyboard shortcuts. |
+| ✅ | **Goods / Defective sorting** | Mature, good-quality fruits go to the Goods inventory; everything else goes to Defective. |
+| 🧑‍🔬 | **Expert review & fine-tuning** | Wrong predictions are sent to an expert, who corrects the labels. Corrections feed the kNN memory bank and fine-tuning (planned). The queue is ranked by entropy, with keyboard shortcuts. |
 | 🔍 | **Similar reference fruits** | Every prediction shows the most similar known fruits (kNN), so experts can see why the model decided. |
-| 📦 | **Inventory** | Every accepted fruit is stored in Supabase with both photos. |
+| 📦 | **Inventory** | Every graded fruit is stored in Supabase with both photos. |
 | 📊 | **Dashboard & history** | Agreement vs. correction rates and Cohen's kappa between model and expert. |
 
 > The frontend contains **no ML code**. Every prediction, OOD score, neighbor and metric comes from the backend; inventory counts come from Supabase.
@@ -58,10 +59,12 @@ An ONNX vision model grades each fruit from a front and back photo, flags images
 
 ```mermaid
 flowchart LR
-    user(["👤 Grader / Expert"])
+    user(["👤 User"])
+    expert(["🧑‍🔬 Expert"])
 
     subgraph FE["🖥️ Frontend · Vue 3 SPA"]
-        pages["Dashboard · Inventory · Grade<br/>Review · History"]
+        scan["📷 Scan front + back"]
+        review["📋 Review queue"]
     end
 
     subgraph BE["⚙️ Backend · FastAPI"]
@@ -69,22 +72,28 @@ flowchart LR
         model["🧠 ONNX model<br/>dragonfruit_int8.onnx"]
         refs["ref_embeddings.npy<br/>+ data/reference/"]
         db[("db.json<br/>expert decisions")]
-        pool[("data/pool/<br/>unlabeled images")]
+        ft["🔁 Fine-tuning<br/>(planned)"]
     end
 
     subgraph SB["🗄️ Supabase"]
-        grad[("gradings table<br/>+ inventory view")]
+        goods[("✅ Goods inventory")]
+        defective[("❌ Defective")]
         photos[("front & back photos")]
     end
 
-    user --> pages
-    pages -- "predict · queue · feedback · metrics" --> api
-    pages -- "inventory records" --> grad
-    pages -- "photo upload" --> photos
+    user --> scan
+    scan -- "predict" --> api
     api --> model
-    api --> refs
+    model --- refs
+    scan -- "mature + good quality" --> goods
+    scan -- "otherwise" --> defective
+    scan -- "photos" --> photos
+    scan -- "wrong prediction" --> review
+    expert --> review
+    review -- "corrected labels" --> api
     api --> db
-    api --> pool
+    db -.-> ft
+    ft -. "updated model" .-> model
 ```
 
 ---
@@ -196,22 +205,33 @@ npm run dev                      # http://localhost:5173
 
 ### 📷 Quick grade (two sides)
 
-1. Photograph the **front** of the fruit.
-2. Photograph the **back** of the same fruit. Both are required.
-3. Press **Grade this fruit**.
+1. Scan the **front** of the fruit.
+2. Scan the **back** of the same fruit. Both are required.
+3. Press **Grade this fruit**. The model predicts maturity and quality.
+4. The fruit is stored automatically:
+   - **Mature and good quality** → ✅ **Goods** inventory
+   - **Anything else** → ❌ **Defective**
+5. If the prediction looks wrong, send the fruit for **expert review**. The expert's corrected labels are used to fine-tune the model.
 
 ```mermaid
 flowchart TD
-    A["📷 Front photo"] --> C
-    B["📷 Back photo"] --> C
-    C["Crop centre square → 224×224 JPEG<br/>in the browser (~18 KB)"] --> D["POST /api/predict"]
-    D --> E{"Each side:<br/>confidence ≥ 0.75 and<br/>similarity ≥ 0.90?"}
-    E -- "No" --> F["⚠️ Outside what the model knows<br/>No reading shown, nothing recorded<br/>Retake that side"]
-    E -- "Yes" --> G["Show reading, advice<br/>and similar fruits"]
-    G --> H{"Both photos and the record<br/>saved to Supabase?"}
-    H -- "Yes" --> I["✅ Fruit added to inventory"]
-    H -- "No" --> J["❌ Nothing kept<br/>page shows the error"]
+    A["📷 Scan front"] --> B["📷 Scan back"]
+    B --> C["Crop centre square → 224×224 JPEG<br/>in the browser (~18 KB)"]
+    C --> D["🧠 Model predicts<br/>POST /api/predict"]
+    D --> E{"Recognised?<br/>confidence ≥ 0.75 and<br/>similarity ≥ 0.90"}
+    E -- "No" --> F["⚠️ Rescan that side<br/>nothing recorded"]
+    E -- "Yes" --> G{"Mature AND<br/>good quality?"}
+    G -- "Yes" --> H[("✅ Goods inventory")]
+    G -- "No" --> I[("❌ Defective")]
+    H & I --> J{"Is the prediction<br/>correct?"}
+    J -- "Yes" --> K["Done"]
+    J -- "No" --> L["📤 Send for expert review"]
+    L --> M["🧑‍🔬 Expert corrects the labels"]
+    M --> N["🔁 Fine-tuning<br/>(planned)"]
+    N -. "updated model" .-> D
 ```
+
+A fruit is saved with **both** photos or not at all: if either photo or the record fails to save, nothing is kept and the page says so.
 
 **How the two sides combine:** maturity is the **average** of both sides; quality follows the **worse** side; OOD similarity is the **lowest** of the two.
 
@@ -221,27 +241,27 @@ flowchart TD
 
 ```mermaid
 sequenceDiagram
-    actor Admin
+    actor User
     actor Expert
     participant UI as Frontend
     participant API as FastAPI
-    participant Pool as data/pool
     participant DB as db.json
+    participant FT as Fine-tuning (planned)
 
-    Admin->>Pool: Drop unlabeled images
+    User->>UI: Flag a wrong prediction
+    UI->>API: Add the fruit to the review queue
     Expert->>UI: Open /review
     UI->>API: GET /api/queue
-    API->>Pool: Predict new images
     API-->>UI: Items sorted by entropy
     Expert->>UI: Open one item
     UI->>API: GET /api/items/:id
     API-->>UI: Prediction, OOD similarity, similar fruits
-    Expert->>UI: Confirm or correct labels, add a note
+    Expert->>UI: Correct the labels, add a note
     UI->>API: POST /api/items/:id/feedback
     API->>DB: Save decision
     Note over API,DB: The fruit joins the kNN memory bank immediately
-    UI->>API: GET /api/history
-    API-->>UI: Decisions for agreement and Cohen's kappa
+    DB-->>FT: Corrected labels
+    FT-->>API: Updated ONNX model
 ```
 
 ### ⌨️ Keyboard shortcuts (expert review)
