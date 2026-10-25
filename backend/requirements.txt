@@ -6,4 +6,3 @@ onnxruntime==1.30.0
 numpy==2.5.3
 pillow==12.3.0
 pillow-heif==1.8.0
-httpx==0.28.1

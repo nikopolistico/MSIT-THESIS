@@ -75,12 +75,17 @@ async function submitAdd() {
   if (formError.value) return
   saving.value = true
   try {
-    const p = await createWorker({
+    const details = {
       full_name: form.value.full_name.trim(),
       username: normalizeUsername(form.value.username),
       password: form.value.password,
-    })
-    created.value = { name: p.full_name, username: p.username, password: form.value.password }
+    }
+    await createWorker(details)
+    created.value = {
+      name: details.full_name,
+      username: details.username,
+      password: details.password,
+    }
     copied.value = false
     adding.value = false
     await load()

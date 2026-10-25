@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canVisit, homeFor, isValidUsername, normalizeUsername, usernameToEmail } from '../auth'
+import { canVisit, homeFor, isValidUsername, normalizeUsername } from '../auth'
 
 describe('usernames', () => {
   it('trims and lowercases', () => {
@@ -10,9 +10,6 @@ describe('usernames', () => {
     expect(isValidUsername('ab')).toBe(false)
     expect(isValidUsername('juan dc')).toBe(false)
     expect(isValidUsername('x'.repeat(33))).toBe(false)
-  })
-  it('maps to the never-mailed farm address', () => {
-    expect(usernameToEmail('juan')).toBe('juan@farm.local')
   })
 })
 

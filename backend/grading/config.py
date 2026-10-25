@@ -17,11 +17,6 @@ REFERENCE = ROOT / "data" / "reference"  # filled by extract_reference.py
 STATIC = Path(os.getenv("STATIC_DIR", ROOT / "static"))
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
 
-# Accounts (admin API). The service key bypasses Row Level Security: backend env only, never the frontend.
-SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
-FARM_EMAIL_DOMAIN = "farm.local"  # usernames become <username>@farm.local; never mailed
-
 POOL.mkdir(parents=True, exist_ok=True)
 REFERENCE.mkdir(parents=True, exist_ok=True)
 

@@ -2,10 +2,37 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { supabase } from '@/api/supabase'
 import type { Profile } from '@/types'
-import { normalizeUsername, usernameToEmail } from '@/utils/auth'
 
-/** The signed-in account and its role. Supabase keeps the session in the browser between visits. */
+const TOKEN_KEY = 'dragonfruit-session'
+
+// Storage can be blocked (private mode); the app then works until the tab is closed.
+function readToken(): string | null {
+  try {
+    return localStorage.getItem(TOKEN_KEY)
+  } catch {
+    return null
+  }
+}
+function writeToken(token: string | null) {
+  try {
+    if (token) localStorage.setItem(TOKEN_KEY, token)
+    else localStorage.removeItem(TOKEN_KEY)
+  } catch {
+    // ignore
+  }
+}
+
+interface SessionResult {
+  token: string
+  profile: Profile
+}
+
+/**
+ * The signed-in account and its role. Accounts live in the app's own tables (profiles + credentials),
+ * not Supabase Auth: login() in the database returns a session token, kept in this browser.
+ */
 export const useAuthStore = defineStore('auth', () => {
+  const token = ref<string | null>(readToken())
   const profile = ref<Profile | null>(null)
   const ready = ref(false)
   let starting: Promise<void> | null = null
@@ -13,29 +40,19 @@ export const useAuthStore = defineStore('auth', () => {
   const role = computed(() => profile.value?.role ?? null)
   const isAdmin = computed(() => role.value === 'admin')
 
-  async function loadProfile(userId: string): Promise<Profile | null> {
-    const { data, error } = await supabase!
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle()
-    if (error) throw new Error(error.message)
-    return (data as Profile | null) ?? null
+  function setSession(s: SessionResult | null) {
+    token.value = s?.token ?? null
+    profile.value = s?.profile ?? null
+    writeToken(token.value)
   }
 
-  /** Reads the saved session once. Safe to call from every navigation. */
+  /** Checks the saved token once. Safe to call from every navigation. */
   function init(): Promise<void> {
     starting ??= (async () => {
-      if (!supabase) return
-      const { data } = await supabase.auth.getSession()
-      const user = data.session?.user
-      if (user) {
-        const p = await loadProfile(user.id).catch(() => null)
-        profile.value = p?.active ? p : null
-      }
-      supabase.auth.onAuthStateChange((event) => {
-        if (event === 'SIGNED_OUT') profile.value = null
-      })
+      if (!supabase || !token.value) return
+      const { data, error } = await supabase.rpc('me', { p_token: token.value })
+      if (error) setSession(null)
+      else profile.value = data as Profile
     })().finally(() => {
       ready.value = true
     })
@@ -44,37 +61,35 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function signIn(username: string, password: string): Promise<void> {
     if (!supabase) throw new Error('Supabase is not configured.')
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: usernameToEmail(normalizeUsername(username)),
-      password,
+    const { data, error } = await supabase.rpc('login', {
+      p_username: username,
+      p_password: password,
     })
-    if (error) {
-      // A banned (disabled) user gets a distinct message from Supabase.
-      if (/banned/i.test(error.message)) throw new Error('This account is disabled. Ask the admin.')
-      throw new Error('Wrong username or password.')
-    }
-    const p = await loadProfile(data.user.id)
-    if (!p) {
-      await supabase.auth.signOut()
-      throw new Error('This account has no role yet. Ask the admin.')
-    }
-    if (!p.active) {
-      await supabase.auth.signOut()
-      throw new Error('This account is disabled. Ask the admin.')
-    }
-    profile.value = p
+    if (error) throw new Error(error.message)
+    setSession(data as SessionResult)
   }
 
   async function signOut(): Promise<void> {
-    profile.value = null
-    await supabase?.auth.signOut()
+    const t = token.value
+    setSession(null)
+    if (supabase && t) await supabase.rpc('logout', { p_token: t })
   }
 
-  /** The current access token, for calls to the backend's admin API. */
-  async function accessToken(): Promise<string | null> {
-    const { data } = (await supabase?.auth.getSession()) ?? { data: { session: null } }
-    return data.session?.access_token ?? null
+  /** The session ended on the server: forget it and go to the sign-in page. */
+  function expire() {
+    setSession(null)
+    if (window.location.pathname !== '/login') window.location.assign('/login')
   }
 
-  return { profile, ready, role, isAdmin, init, signIn, signOut, accessToken }
+  return {
+    token,
+    profile,
+    ready,
+    role,
+    isAdmin,
+    init,
+    signIn,
+    signOut,
+    expire,
+  }
 })

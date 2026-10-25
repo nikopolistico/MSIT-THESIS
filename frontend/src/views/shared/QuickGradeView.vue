@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue'
-import { ImagePlus, RotateCcw, ScanLine } from '@lucide/vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { ImagePlus, ScanLine } from '@lucide/vue'
 import { api } from '@/api'
 import { inventoryEnabled, recordGrading } from '@/api/inventory'
 import CaptureBox from '@/components/CaptureBox.vue'
@@ -25,12 +25,6 @@ const sideText: Record<Side, string> = { front: 'Front', back: 'Back' }
 const auth = useAuthStore()
 const simple = computed(() => !auth.isAdmin)
 
-/** RLS refuses the insert when the worker's account was disabled after they signed in. */
-const saveError = (e: unknown) =>
-  /row-level security/i.test(errorMessage(e))
-    ? 'Your account is disabled, so this fruit was not saved. Ask the admin.'
-    : errorMessage(e)
-
 const files = ref<Record<Side, File | null>>({ front: null, back: null })
 const urls = ref<Record<Side, string | null>>({ front: null, back: null })
 const result = ref<ItemDetail | null>(null)
@@ -41,8 +35,9 @@ const inventoryError = ref<string | null>(null)
 const recorded = ref(false)
 
 const editing = ref<Side | null>(null) // a retake asked for from a tile
-// Once the user starts a live scan, each next side opens the scanner by itself.
-const scanMode = ref(false)
+// The live scan opens first: front, then back, each side by itself. Closing it offers Take photo and
+// Upload instead.
+const scanMode = ref(true)
 
 /** The side the single capture box asks for: front, then back, then nothing (ready to grade). */
 const active = computed<Side | null>(() => {
@@ -89,6 +84,13 @@ function startOver() {
   shown.value = 'front'
 }
 
+// Front and back are both in: grade right away. A retaken side clears the result, so it grades again.
+watch(active, (side) => {
+  if (side === null && files.value.front && files.value.back && !result.value && !loading.value) {
+    grade()
+  }
+})
+
 async function grade() {
   const front = files.value.front
   const back = files.value.back
@@ -108,7 +110,7 @@ async function grade() {
           recorded.value = true
         })
         .catch((e) => {
-          inventoryError.value = saveError(e)
+          inventoryError.value = errorMessage(e)
         })
     }
   } catch (e) {
@@ -154,18 +156,18 @@ const disagreeText = computed(() =>
   disagreeing.value.map((t) => TASKS[t].title.toLowerCase()).join(' and '),
 )
 
-const readyHint = 'Both sides will be checked, and both photos are saved with the fruit.'
+const readyHint = 'The fruit was graded from both sides. Both photos are saved with it.'
 
 const boxText: Record<Side, { title: string; step: string; hint: string }> = {
   front: {
     title: 'Front of the fruit',
     step: 'Step 1 of 2',
-    hint: 'Take or upload a photo of the front. Keep the fruit in the middle of the frame.',
+    hint: 'Scan the front first. Keep the fruit in the middle of the frame.',
   },
   back: {
     title: 'Back of the fruit',
     step: 'Step 2 of 2',
-    hint: 'Turn the fruit over and photograph the back. A defect often hides there.',
+    hint: 'Turn the fruit over and scan the back. A defect often hides there.',
   },
 }
 
@@ -181,12 +183,12 @@ onBeforeUnmount(() => {
     <PageHeader
       v-if="simple"
       title="Scan"
-      description="Photograph the front and the back of one fruit, then grade it. The fruit is saved to the inventory under your name."
+      description="Scan the front of the fruit, then the back. It is graded right after and saved to the inventory under your name."
     />
     <PageHeader
       v-else
       title="Quick grade"
-      description="Photograph the front and the back of one fruit. Each photo is cropped to a square and reduced to 224 × 224 pixels, the size the model reads. Nothing is added to the review queue."
+      description="Scan the front of one fruit, then the back; it is graded right after. Each photo is cropped to a square and reduced to 224 × 224 pixels, the size the model reads. Nothing is added to the review queue."
     />
 
     <div class="mb-10 flex flex-col gap-6 md:flex-row md:items-start">
@@ -225,14 +227,17 @@ onBeforeUnmount(() => {
           @cancel="editing = null"
         />
         <section v-else class="rounded-xl border border-stone-200 bg-white p-4">
-          <h2 class="text-lg font-semibold">Ready to grade</h2>
-          <p class="mt-1 text-sm text-stone-600">{{ readyHint }}</p>
+          <h2 class="text-lg font-semibold">
+            {{ loading ? 'Grading the fruit' : 'Both sides scanned' }}
+          </h2>
+          <p class="mt-1 text-sm text-stone-600">
+            {{ loading ? 'Checking the front and the back.' : readyHint }}
+          </p>
           <div class="mt-4 flex flex-wrap gap-2">
-            <button class="btn btn-primary !py-2.5" :disabled="loading" @click="grade">
+            <button class="btn btn-primary !py-2.5" :disabled="loading" @click="startOver">
               <ScanLine class="size-4" aria-hidden="true" />
-              {{ loading ? 'Grading' : 'Grade this fruit' }}
+              Scan next fruit
             </button>
-            <button class="btn !py-2.5" :disabled="loading" @click="startOver">Start over</button>
           </div>
         </section>
       </div>
@@ -322,10 +327,6 @@ onBeforeUnmount(() => {
               <p v-if="verdict.action" class="mt-1 text-sm">{{ verdict.action }}</p>
               <p v-if="recorded" class="mt-2 text-xs">Added to the inventory.</p>
             </div>
-            <button v-if="simple" class="btn btn-primary mb-4 w-full !py-2.5" @click="startOver">
-              <RotateCcw class="size-4" aria-hidden="true" />
-              Scan next fruit
-            </button>
             <p
               v-if="inventoryError"
               role="alert"
@@ -334,7 +335,7 @@ onBeforeUnmount(() => {
               Not saved to the inventory: {{ inventoryError }}
               <template v-if="!simple">
                 Both photos must be saved with the fruit. If this keeps happening, check that
-                frontend/supabase/auth-roles.sql was run in Supabase.
+                schema.sql and auth-roles.sql were run in Supabase.
               </template>
             </p>
 
