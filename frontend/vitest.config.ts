@@ -1,0 +1,8 @@
+import { fileURLToPath, URL } from 'node:url'
+import { defineConfig } from 'vitest/config'
+
+// Unit tests for plain TypeScript helpers; no browser or Vue needed.
+export default defineConfig({
+  resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
+  test: { environment: 'node', include: ['src/**/__tests__/*.test.ts'] },
+})

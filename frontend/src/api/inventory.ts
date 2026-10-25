@@ -9,6 +9,15 @@ export interface InventoryRow {
   count: number
 }
 
+/** Scans per worker, day (Asia/Manila) and bin, from the worker_counts view. */
+export interface WorkerCountRow {
+  worker_id: string | null // null: scanned before accounts existed
+  day: string // YYYY-MM-DD
+  maturity: string
+  quality: string
+  count: number
+}
+
 export interface Grading {
   id: string
   created_at: string
@@ -16,6 +25,7 @@ export interface Grading {
   quality: string
   image_path?: string | null // front photo
   back_image_path?: string | null
+  worker_id: string | null
 }
 
 export const inventoryEnabled = supabase !== null
@@ -63,28 +73,49 @@ export async function getInventory(): Promise<InventoryRow[]> {
   return data ?? []
 }
 
-/** Public address of a saved photo, or null when there is none. */
-export function photoUrl(path?: string | null): string | null {
-  if (!supabase || !path) return null
-  return supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl
+/** Scans per worker and day. RLS returns only the caller's rows to a worker, and every row to the admin. */
+export async function getWorkerCounts(): Promise<WorkerCountRow[]> {
+  if (!supabase) return []
+  const { data, error } = await supabase
+    .from('worker_counts')
+    .select('worker_id, day, maturity, quality, count')
+  if (error) throw new Error(error.message)
+  return data ?? []
 }
 
-/** One page of individual graded fruit, oldest first, so a fruit keeps its number as more are added. */
-export async function getGradings(limit: number, offset: number): Promise<Grading[]> {
+/**
+ * Temporary addresses (1 hour) for saved photos, keyed by path. The bucket is private, so a worker can
+ * only open their own photos and the admin all of them.
+ */
+export async function photoUrls(paths: string[]): Promise<Record<string, string>> {
+  if (!supabase || !paths.length) return {}
+  const { data, error } = await supabase.storage.from(PHOTO_BUCKET).createSignedUrls(paths, 3600)
+  if (error) throw new Error(error.message)
+  const out: Record<string, string> = {}
+  for (const d of data ?? []) if (d.path && d.signedUrl) out[d.path] = d.signedUrl
+  return out
+}
+
+/**
+ * One page of individual graded fruit, oldest first, so a fruit keeps its number as more are added.
+ * `workerId`: undefined lists everyone, null lists fruit scanned before accounts existed.
+ */
+export async function getGradings(
+  limit: number,
+  offset: number,
+  workerId?: string | null,
+): Promise<Grading[]> {
   if (!supabase) return []
-  const page = (columns: string) =>
-    supabase!
-      .from('gradings')
-      .select(columns)
-      .order('created_at', { ascending: true })
-      .range(offset, offset + limit - 1)
-  const base = 'id, created_at, maturity, quality'
-  // shortcut: photo columns are missing until add-photos.sql is run; list without them until then.
-  let res = await page(`${base}, image_path, back_image_path`)
-  if (res.error) res = await page(`${base}, image_path`)
-  if (res.error) res = await page(base)
-  if (res.error) throw new Error(res.error.message)
-  return (res.data ?? []) as unknown as Grading[]
+  let q = supabase
+    .from('gradings')
+    .select('id, created_at, maturity, quality, image_path, back_image_path, worker_id')
+    .order('created_at', { ascending: true })
+    .range(offset, offset + limit - 1)
+  if (workerId === null) q = q.is('worker_id', null)
+  else if (workerId) q = q.eq('worker_id', workerId)
+  const { data, error } = await q
+  if (error) throw new Error(error.message)
+  return data ?? []
 }
 
 /**
@@ -98,7 +129,7 @@ export async function deleteGrading(g: Grading): Promise<string | null> {
   if (error) throw new Error(error.message)
   if (!data?.length) {
     throw new Error(
-      'Nothing was deleted. Run frontend/supabase/add-photos.sql in Supabase to allow it.',
+      'Nothing was deleted. Only the admin can delete, and auth-roles.sql must be run in Supabase.',
     )
   }
   const paths = [g.image_path, g.back_image_path].filter((p): p is string => !!p)

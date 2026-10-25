@@ -99,3 +99,15 @@ export interface ApiClient {
   getMetrics(): Promise<Metrics>
   getHistory(): Promise<Decision[]>
 }
+
+export type Role = 'admin' | 'worker'
+
+/** One account: a farm worker or the admin. */
+export interface Profile {
+  id: string
+  username: string
+  full_name: string
+  role: Role
+  active: boolean
+  created_at?: string
+}

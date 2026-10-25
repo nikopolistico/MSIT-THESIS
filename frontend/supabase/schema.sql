@@ -36,3 +36,5 @@ create policy "anon upload gradings" on storage.objects for insert to anon with 
 create policy "anon read gradings" on storage.objects for select to anon using (bucket_id = 'gradings');
 create policy "anon delete gradings" on storage.objects for delete to anon using (bucket_id = 'gradings');
 create policy "anon delete" on gradings for delete to anon using (true);
+
+-- Accounts and roles (admin / worker): run auth-roles.sql next. It replaces the anon policies above.
