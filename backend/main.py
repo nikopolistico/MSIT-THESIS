@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from grading.admin import router as admin_router
 from grading.config import CORS_ORIGINS, POOL, REFERENCE, STATIC
 from grading.routes import router
 
@@ -21,6 +22,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(router)
+app.include_router(admin_router)
 # Mount the more specific path first, or /media would swallow /media/ref.
 app.mount("/media/ref", StaticFiles(directory=REFERENCE), name="reference")
 app.mount("/media", StaticFiles(directory=POOL), name="media")

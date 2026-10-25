@@ -1,33 +1,68 @@
 <script setup lang="ts">
-import type { Component } from 'vue'
-import { RouterLink } from 'vue-router'
-import { Boxes, History, LayoutDashboard, ListChecks, ScanLine } from '@lucide/vue'
+import { computed, type Component } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
+import {
+  Boxes,
+  ChartNoAxesColumn,
+  History,
+  LayoutDashboard,
+  ListChecks,
+  LogOut,
+  ScanLine,
+  Users,
+} from '@lucide/vue'
+import BrandMark from '@/components/BrandMark.vue'
+import { useAuthStore } from '@/stores/auth'
 
 interface NavLink {
   to: string
   label: string
   icon: Component
+  /** Shorter label for the mobile bottom bar; the bar shows only links that have one. */
+  mobile?: string
 }
 
-const groups: { title: string; links: NavLink[] }[] = [
+const auth = useAuthStore()
+const router = useRouter()
+
+const adminGroups: { title: string; links: NavLink[] }[] = [
   {
     title: 'Monitoring',
     links: [
-      { to: '/dashboard', label: 'Admin Dashboard', icon: LayoutDashboard },
-      { to: '/inventory', label: 'Inventory', icon: Boxes },
+      { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, mobile: 'Dashboard' },
+      { to: '/inventory', label: 'Inventory', icon: Boxes, mobile: 'Inventory' },
+      { to: '/workers', label: 'Workers', icon: Users, mobile: 'Workers' },
     ],
   },
-  { title: 'Tools', links: [{ to: '/grade', label: 'Quick grade', icon: ScanLine }] },
+  { title: 'Tools', links: [{ to: '/grade', label: 'Quick grade', icon: ScanLine, mobile: 'Grade' }] },
   {
     title: 'Expert review',
     links: [
-      { to: '/review', label: 'Review queue', icon: ListChecks },
+      { to: '/review', label: 'Review queue', icon: ListChecks, mobile: 'Review' },
       { to: '/history', label: 'History', icon: History },
+      { to: '/model', label: 'Model metrics', icon: ChartNoAxesColumn },
     ],
   },
 ]
-const links = groups.flatMap((g) => g.links)
-const mobileLabel: Record<string, string> = { '/dashboard': 'Dashboard', '/grade': 'Grade' }
+
+const workerGroups: { title: string; links: NavLink[] }[] = [
+  {
+    title: 'My work',
+    links: [
+      { to: '/scan', label: 'Scan', icon: ScanLine, mobile: 'Scan' },
+      { to: '/my-dashboard', label: 'My dashboard', icon: LayoutDashboard, mobile: 'My dashboard' },
+    ],
+  },
+]
+
+const groups = computed(() => (auth.isAdmin ? adminGroups : workerGroups))
+const mobileLinks = computed(() => groups.value.flatMap((g) => g.links).filter((l) => l.mobile))
+const roleText = computed(() => (auth.isAdmin ? 'Admin' : 'Worker'))
+
+async function signOut() {
+  await auth.signOut()
+  await router.replace('/login')
+}
 </script>
 
 <template>
@@ -36,19 +71,7 @@ const mobileLabel: Record<string, string> = { '/dashboard': 'Dashboard', '/grade
     <div class="scale-tips absolute inset-y-0 -right-3" aria-hidden="true"></div>
 
     <div class="mb-8 flex items-center gap-3 px-2 pt-2">
-      <!-- Halved pitaya: skin, flesh, seeds -->
-      <svg viewBox="0 0 32 32" class="size-9 shrink-0" aria-hidden="true">
-        <circle cx="16" cy="16" r="15" fill="#f8bbd0" />
-        <circle cx="16" cy="16" r="11.5" fill="#fff8fa" />
-        <g fill="#1f1219">
-          <circle cx="16" cy="10.5" r="1" />
-          <circle cx="11" cy="14" r="1" />
-          <circle cx="21" cy="14" r="1" />
-          <circle cx="13" cy="20" r="1" />
-          <circle cx="19" cy="20" r="1" />
-          <circle cx="16" cy="16" r="1" />
-        </g>
-      </svg>
+      <BrandMark class="size-9 shrink-0" />
       <div class="leading-tight">
         <p class="font-display text-base font-semibold text-white">Dragon fruit</p>
         <p class="text-xs text-white/75">Grading console</p>
@@ -72,7 +95,34 @@ const mobileLabel: Record<string, string> = { '/dashboard': 'Dashboard', '/grade
         </RouterLink>
       </div>
     </nav>
+
+    <div class="mt-auto border-t border-sidebar-border px-2 pt-4">
+      <p class="truncate text-sm font-medium text-white">{{ auth.profile?.full_name }}</p>
+      <p class="text-xs text-white/75">{{ roleText }} · {{ auth.profile?.username }}</p>
+      <button
+        class="mt-3 flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-white/85 transition-colors hover:bg-sidebar-accent hover:text-white"
+        @click="signOut"
+      >
+        <LogOut class="size-[18px]" aria-hidden="true" />
+        Sign out
+      </button>
+    </div>
   </aside>
+
+  <!-- Mobile top strip: who is signed in, and sign out -->
+  <header
+    class="flex items-center gap-3 border-b border-stone-200 bg-white px-4 py-2.5 md:hidden"
+  >
+    <BrandMark class="size-7 shrink-0" />
+    <div class="min-w-0 flex-1 leading-tight">
+      <p class="truncate text-sm font-medium">{{ auth.profile?.full_name }}</p>
+      <p class="text-xs text-stone-500">{{ roleText }}</p>
+    </div>
+    <button class="btn px-2.5 py-1.5 text-xs" @click="signOut">
+      <LogOut class="size-4" aria-hidden="true" />
+      Sign out
+    </button>
+  </header>
 
   <!-- Mobile bottom bar -->
   <nav
@@ -80,14 +130,14 @@ const mobileLabel: Record<string, string> = { '/dashboard': 'Dashboard', '/grade
     aria-label="Main"
   >
     <RouterLink
-      v-for="l in links"
+      v-for="l in mobileLinks"
       :key="l.to"
       :to="l.to"
       class="flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium text-stone-600"
       active-class="!text-brand-700"
     >
       <component :is="l.icon" class="size-5" aria-hidden="true" />
-      {{ mobileLabel[l.to] ?? l.label.split(' ')[0] }}
+      {{ l.mobile }}
     </RouterLink>
   </nav>
 </template>
