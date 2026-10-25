@@ -14,7 +14,11 @@ export const useAuthStore = defineStore('auth', () => {
   const isAdmin = computed(() => role.value === 'admin')
 
   async function loadProfile(userId: string): Promise<Profile | null> {
-    const { data, error } = await supabase!.from('profiles').select('*').eq('id', userId).maybeSingle()
+    const { data, error } = await supabase!
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle()
     if (error) throw new Error(error.message)
     return (data as Profile | null) ?? null
   }

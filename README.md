@@ -103,8 +103,16 @@ flowchart LR
 ```
 MY-THESIS/
 ├── 🖥️ frontend/                Vue 3 + TypeScript + Vite + Pinia + Vue Router + Tailwind 4 + shadcn-vue + Chart.js
-│   ├── src/config/labels.ts    labels, thresholds, MODEL_INPUT_SIZE
-│   ├── supabase/               schema.sql, add-photos.sql
+│   ├── src/
+│   │   ├── views/auth/         LoginView (username + password)
+│   │   ├── views/worker/       MyDashboardView (own counts)
+│   │   ├── views/admin/        Dashboard · Inventory · Workers · ModelMetrics
+│   │   ├── views/admin/review/ ReviewQueue · ExpertReview · History
+│   │   ├── views/shared/       QuickGradeView (admin "Quick grade" and worker "Scan")
+│   │   ├── components/dashboard/ CountTiles · DailyChart · BinBreakdown
+│   │   ├── stores/auth.ts      signed-in account and role
+│   │   └── config/labels.ts    labels, thresholds, MODEL_INPUT_SIZE
+│   ├── supabase/               schema.sql · add-photos.sql · auth-roles.sql · rls-check.sql
 │   ├── vercel.json / netlify.toml / .npmrc
 │   └── .env.example
 │
@@ -112,6 +120,8 @@ MY-THESIS/
 │   ├── main.py                 assembles the app (CORS, media, frontend)
 │   ├── grading/                config · model (ONNX) · references (OOD) · store (decisions)
 │   │                           · scoring · service · routes (/api)
+│   │                           · admin + supabase_admin (/api/admin/workers)
+│   ├── tests/                  pytest tests for the admin API
 │   ├── evaluate.py
 │   ├── extract_reference.py    fills data/reference/ from the dataset zips
 │   ├── requirements.txt
@@ -142,6 +152,9 @@ MY-THESIS/
 ```sh
 pip install -r backend/requirements.txt
 cd backend
+# For the Workers page (creating accounts) the backend needs Supabase's service-role key:
+#   PowerShell:  $env:SUPABASE_URL="https://xxx.supabase.co"; $env:SUPABASE_SERVICE_KEY="..."
+#   bash:        export SUPABASE_URL=https://xxx.supabase.co SUPABASE_SERVICE_KEY=...
 python -m uvicorn main:app --port 8000
 ```
 
@@ -162,6 +175,20 @@ In the Supabase **SQL editor**, run in this order:
 
 1. `frontend/supabase/schema.sql` — creates the `gradings` table and `inventory` view
 2. `frontend/supabase/add-photos.sql` — keeps front and back photos and allows deleting (safe to run again)
+3. `frontend/supabase/auth-roles.sql` — admin and worker accounts, Row Level Security, `worker_counts` view (safe to run again)
+4. Optional: `frontend/supabase/rls-check.sql` — checks the rules; it prints `RLS checks passed` and leaves nothing behind
+
+Then, once:
+
+- **Authentication → Sign In / Providers → Email:** turn off **Confirm email**. People sign in with a username; the app turns it into `<username>@farm.local`, which is never mailed.
+- **Create the first admin:** Authentication → Users → Add user → email `admin@farm.local`, a password, tick **Auto Confirm User**. Copy the new user's id and run:
+
+  ```sql
+  insert into profiles (id, username, full_name, role)
+  values ('<user id>', 'admin', 'Farm admin', 'admin');
+  ```
+
+  Sign in with username `admin`. Add workers from the **Workers** page.
 
 ### Step 4 · Start the frontend
 
@@ -187,6 +214,8 @@ npm run dev                      # http://localhost:5173
 |---|---|
 | `npm run build` | Type-check (`vue-tsc`) + production build |
 | `npm run lint` | Lint the frontend |
+| `npm test` | Unit tests (Vitest) |
+| `pip install -r backend/requirements-dev.txt` then `cd backend && python -m pytest tests -q` | Backend tests |
 
 ---
 
@@ -194,14 +223,29 @@ npm run dev                      # http://localhost:5173
 
 ### Pages
 
+Everyone signs in at `/login` with a username and password. What they see depends on their role.
+
+**Worker** (farm staff) — scans fruit and sees only their own count:
+
 | Route | Page | Purpose |
 |---|---|---|
-| `/dashboard` | 📊 Admin Dashboard | Overall metrics and agreement |
-| `/inventory` | 📦 Inventory | All graded fruits with photos |
-| `/grade` | 📷 Quick grade | Grade one fruit from two photos |
+| `/scan` | 📷 Scan | Grade one fruit from two photos; it is saved under the worker's name |
+| `/my-dashboard` | 📊 My dashboard | Today, this week, total, last 14 days and bins — own scans only |
+
+**Admin** — monitors the inventory and every worker:
+
+| Route | Page | Purpose |
+|---|---|---|
+| `/dashboard` | 📊 Dashboard | Farm totals, scans per worker, last 14 days, bins |
+| `/inventory` | 📦 Inventory | Every scanned fruit with photos and who scanned it; filter by worker; delete |
+| `/workers` | 👥 Workers | Add workers, disable/enable, reset passwords |
+| `/grade` | 📷 Quick grade | Grade one fruit with the model's full evidence |
 | `/review` | 📋 Review queue | Uncertain images for experts |
 | `/review/:id` | 🧑‍🔬 Expert review | Confirm or correct one image |
 | `/history` | 🕘 History | Past expert decisions |
+| `/model` | 📈 Model metrics | Agreement, kappa and model accuracy |
+
+A worker cannot see another worker's fruit, counts or photos. This is enforced by Row Level Security in Supabase, not only by the app.
 
 ### 📷 Quick grade (two sides)
 
@@ -289,6 +333,13 @@ Shortcuts are ignored while typing in the note field.
 | `VITE_SUPABASE_URL` | Supabase project URL. Leave empty to disable the inventory |
 | `VITE_SUPABASE_ANON_KEY` | Supabase anon/publishable key |
 
+Backend (`backend/.env.example`; set them in the shell or on the host):
+
+| Variable | Meaning |
+|---|---|
+| `SUPABASE_URL` | Same project URL as the frontend |
+| `SUPABASE_SERVICE_KEY` | Service-role key, for creating and disabling accounts. **Backend only** — it bypasses Row Level Security, so never put it in a `VITE_` variable. On Fly.io: `fly secrets set SUPABASE_SERVICE_KEY=...` |
+
 ### Labels and thresholds (`frontend/src/config/labels.ts`)
 
 | Setting | Default | Rule |
@@ -330,6 +381,9 @@ Relative image URLs (e.g. `/media/a.jpg`) are resolved against `VITE_API_BASE_UR
 | `POST` | `/api/predict` | multipart: `image` (front, required), `back` (optional) | Same shape as `GET /api/items/:id`, plus `views` (one reading per side). Stateless; nothing is stored |
 | `GET` | `/api/metrics` | — | `{labelCount, expertQueries, correctionsApplied, evaluations:[{date, accuracy, macroF1}], rounds:[{round, queries, corrections}], lastConsolidation:{runAt, status, accuracyBefore?, accuracyAfter?, reason?} \| null}` |
 | `GET` | `/api/history` | — | `[{id, itemId, imageUrl, modelMaturity, modelQuality, expertMaturity, expertQuality, note?, timestamp}]` |
+| `GET` | `/api/admin/workers` | header `Authorization: Bearer <Supabase access token>` of an active admin | `[{id, username, full_name, role, active, created_at}]` |
+| `POST` | `/api/admin/workers` | JSON `{username, full_name, password}` | `201` the new worker. `400` bad username/password, `409` username taken |
+| `PATCH` | `/api/admin/workers/:id` | JSON `{active?, password?}` | The updated account. `400` when disabling yourself, `404` unknown id |
 
 Agreed vs. corrected and Cohen's kappa are computed in the browser from `/api/history`.
 
@@ -471,7 +525,7 @@ Import the project and set:
 
 #### 3. Supabase
 
-Run `frontend/supabase/schema.sql` once, then `frontend/supabase/add-photos.sql` (safe to run again).
+Run `frontend/supabase/schema.sql` once, then `add-photos.sql` and `auth-roles.sql` (both safe to run again), and do the one-time steps in [Step 3](#step-3--set-up-supabase-once). Set `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` on the backend host.
 
 ---
 
@@ -486,7 +540,10 @@ Run `frontend/supabase/schema.sql` once, then `frontend/supabase/add-photos.sql`
 | CORS error in the browser console | Add the frontend address to `CORS_ORIGINS` on the backend |
 | New env values aren't used | `VITE_*` values are baked in at build time. Rebuild / redeploy |
 | Refreshing `/inventory` gives 404 | Make sure `vercel.json` (or `netlify.toml`) is in the `frontend` root |
-| Inventory page is empty or disabled | Check `VITE_SUPABASE_URL` and that both SQL scripts were run |
+| Inventory page is empty or disabled | Check `VITE_SUPABASE_URL` and that the SQL scripts were run |
+| "Wrong username or password" for a new account | Check that **Confirm email** is off in Supabase |
+| "This account has no role yet" | The user exists in Auth but has no `profiles` row. Create accounts from the Workers page |
+| Workers page: "Supabase is not configured on the server" | Set `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` on the backend and restart it |
 
 ---
 
@@ -495,5 +552,5 @@ Run `frontend/supabase/schema.sql` once, then `frontend/supabase/add-photos.sql`
 These are left open on purpose for the demo. Close them before sharing the link:
 
 - [ ] **Add a login to the backend.** Right now anyone can read the queue and post feedback.
-- [ ] **Tighten Supabase policies.** Anyone with the anon key (visible in the browser) can upload, read and delete photos and rows. Add Supabase Auth and restrict the policies.
+- [x] **Tighten Supabase policies.** Done by `auth-roles.sql`: sign-in is required, workers see only their own rows and photos, only the admin can delete.
 - [ ] Serve the app over **https** (required for the camera anyway).
