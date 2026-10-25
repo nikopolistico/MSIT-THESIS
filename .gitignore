@@ -14,5 +14,9 @@ __pycache__/
 backend/data/pool/
 backend/data/db.json
 
+
+# Python virtual environment
+backend/.venv/
+
 # The full-precision model (87 MB) is not used; config.json points to the int8 one
 backend/model/deploy/dragonfruit.onnx
