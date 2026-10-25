@@ -241,7 +241,9 @@ const hasUnassigned = computed(() => countRows.value.some((r) => r.worker_id ===
                 </span>
                 <span class="grid min-w-0 flex-1 gap-1 md:grid-cols-[10rem_1fr_1.2fr] md:gap-x-4">
                   <span class="order-2 text-xs text-stone-600 md:order-none md:text-sm">
-                    <span class="block font-medium text-stone-800">{{ workerName(g.worker_id) }}</span>
+                    <span class="block font-medium text-stone-800">{{
+                      workerName(g.worker_id)
+                    }}</span>
                     <time>{{ formatDateTime(g.created_at) }}</time>
                   </span>
                   <span class="order-1 flex flex-wrap items-center gap-x-4 gap-y-1 md:order-none">

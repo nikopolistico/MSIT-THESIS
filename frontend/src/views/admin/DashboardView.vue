@@ -185,4 +185,7 @@ const workerRows = computed(() => {
           </div>
           <BinBreakdown :rows="farm.byBin" />
         </section>
-     
+      </div>
+    </StateBlock>
+  </div>
+</template>

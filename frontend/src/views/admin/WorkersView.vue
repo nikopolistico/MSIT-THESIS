@@ -395,4 +395,9 @@ const input = 'w-full rounded-lg border border-stone-300 bg-white px-3 py-2.5 te
             <button v-if="!resetDone" type="submit" class="btn btn-primary" :disabled="resetBusy">
               {{ resetBusy ? 'Saving' : 'Change password' }}
             </button>
-          </DialogFo
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  </div>
+</template>

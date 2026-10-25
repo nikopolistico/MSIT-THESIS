@@ -59,7 +59,11 @@ describe('byWorker', () => {
   it('summarizes each worker, keeping unassigned (null) separate', () => {
     const now = new Date('2026-10-25T02:00:00Z')
     const m = byWorker(
-      [row('2026-10-25', 2), row('2026-10-25', 1, { worker_id: 'b' }), row('2026-10-01', 7, { worker_id: null })],
+      [
+        row('2026-10-25', 2),
+        row('2026-10-25', 1, { worker_id: 'b' }),
+        row('2026-10-01', 7, { worker_id: null }),
+      ],
       now,
     )
     expect(m.get('a')?.today).toBe(2)

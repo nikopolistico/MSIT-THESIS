@@ -34,7 +34,10 @@ const adminGroups: { title: string; links: NavLink[] }[] = [
       { to: '/workers', label: 'Workers', icon: Users, mobile: 'Workers' },
     ],
   },
-  { title: 'Tools', links: [{ to: '/grade', label: 'Quick grade', icon: ScanLine, mobile: 'Grade' }] },
+  {
+    title: 'Tools',
+    links: [{ to: '/grade', label: 'Quick grade', icon: ScanLine, mobile: 'Grade' }],
+  },
   {
     title: 'Expert review',
     links: [
@@ -110,9 +113,7 @@ async function signOut() {
   </aside>
 
   <!-- Mobile top strip: who is signed in, and sign out -->
-  <header
-    class="flex items-center gap-3 border-b border-stone-200 bg-white px-4 py-2.5 md:hidden"
-  >
+  <header class="flex items-center gap-3 border-b border-stone-200 bg-white px-4 py-2.5 md:hidden">
     <BrandMark class="size-7 shrink-0" />
     <div class="min-w-0 flex-1 leading-tight">
       <p class="truncate text-sm font-medium">{{ auth.profile?.full_name }}</p>
