@@ -194,8 +194,8 @@ onBeforeUnmount(() => {
     />
 
     <div class="mb-10 flex flex-col gap-6 md:flex-row md:items-start">
-      <!-- The photos already taken are set aside here -->
-      <div class="flex gap-3 md:order-last">
+      <!-- The photos already taken are set aside here, below the scanner on a phone -->
+      <div class="order-last flex gap-3">
         <CapturedTile
           side="front"
           title="Front"

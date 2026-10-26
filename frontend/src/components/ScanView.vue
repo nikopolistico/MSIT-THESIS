@@ -160,7 +160,7 @@ const locked = computed(() => phase.value === 'locking' || phase.value === 'capt
 
     <div
       v-show="phase !== 'error'"
-      class="relative aspect-[4/3] overflow-hidden rounded-lg bg-stone-950"
+      class="relative h-[75svh] overflow-hidden rounded-lg bg-stone-950 sm:h-auto sm:aspect-[5/4]"
     >
       <video ref="video" class="size-full object-cover" autoplay playsinline muted></video>
 
