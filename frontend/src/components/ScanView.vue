@@ -228,11 +228,12 @@ const locked = computed(() => phase.value === 'locking' || phase.value === 'capt
     </p>
 
     <div class="mt-3 flex flex-wrap gap-2">
+      <!-- The model captures by itself; the manual shutter is only a fallback when it stops answering -->
       <button
-        v-if="phase !== 'error'"
+        v-if="modelSilent && phase !== 'error'"
         type="button"
         class="btn btn-primary !py-2.5"
-        :disabled="phase === 'starting' || phase === 'captured'"
+        :disabled="phase === 'captured'"
         @click="capture"
       >
         <Camera class="size-4" aria-hidden="true" />

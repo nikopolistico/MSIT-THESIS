@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { ImagePlus, ScanLine } from '@lucide/vue'
+import { ScanLine } from '@lucide/vue'
 import { api } from '@/api'
 import { inventoryEnabled, recordGrading } from '@/api/inventory'
 import CaptureBox from '@/components/CaptureBox.vue'
@@ -103,9 +103,9 @@ async function grade() {
     const next = await api.predict(front, back)
     result.value = next
     shown.value = flagged.value[0] ?? 'front'
-    // Unrecognized photos are not counted. An inventory failure must not hide a good reading.
-    if (!flagged.value.length && inventoryEnabled) {
-      await recordGrading(next.maturity.label, next.quality.label, { front, back })
+    // An inventory failure must not hide a good reading.
+    if (inventoryEnabled) {
+      await recordGrading(next.maturity.label, quality.value!, { front, back })
         .then(() => {
           recorded.value = true
         })
@@ -120,15 +120,16 @@ async function grade() {
   }
 }
 
-function onPickAgain(side: Side, e: Event) {
-  const input = e.target as HTMLInputElement
-  const file = input.files?.[0]
-  input.value = ''
-  if (file) setFile(side, file)
-}
-
 const view = computed(
   () => result.value?.views?.find((v) => v.side === shown.value) ?? result.value?.views?.[0],
+)
+
+/**
+ * The fruit's quality. The backend already takes the worse side, so one defective side makes it
+ * defective; a side the model does not recognize counts as defective too.
+ */
+const quality = computed(() =>
+  result.value ? (flagged.value.length ? 'defective' : result.value.quality.label) : null,
 )
 
 /** The bin the fruit belongs in, with the model's advice for it. */
@@ -136,10 +137,11 @@ const verdict = computed(() => {
   const r = result.value
   if (!r) return null
   const m = labelDef('maturity', r.maturity.label).text
-  const q = labelDef('quality', r.quality.label).text
+  const q = labelDef('quality', quality.value!)
   return {
-    title: `${m}, ${q.toLowerCase()}`,
-    action: BIN_ACTIONS[`${r.maturity.label}|${r.quality.label}`] ?? '',
+    title: `${m}, ${q.text.toLowerCase()}`,
+    action: BIN_ACTIONS[`${r.maturity.label}|${quality.value}`] ?? '',
+    bad: q.tone === 'bad',
   }
 })
 
@@ -285,60 +287,47 @@ onBeforeUnmount(() => {
 
         <section>
           <div class="section-title">
-            <h2>{{ flagged.length ? 'Not recognized' : 'Reading' }}</h2>
+            <h2>Reading</h2>
           </div>
 
-          <!-- A photo the model does not know: no reading, no advice, no neighbors, nothing recorded -->
+          <!-- The answer first: the bin and what to do with the fruit -->
           <div
-            v-if="flagged.length"
-            role="alert"
-            class="rounded-lg border border-red-200 bg-red-50 p-5 text-red-800"
+            class="mb-4 rounded-lg border p-4"
+            :class="
+              verdict.bad
+                ? 'border-red-200 bg-red-50 text-red-800'
+                : 'border-emerald-100 bg-emerald-100/60 text-emerald-800'
+            "
           >
-            <p class="font-display text-xl font-semibold">Outside what the model knows</p>
-            <p class="mt-2 text-sm">
-              This may not be a dragon fruit in the
-              {{ flagged.length > 1 ? 'front or back photo' : `${flagged[0]} photo` }}. Please
-              upload the correct {{ flagged.length > 1 ? 'photos' : 'photo' }} again.
-            </p>
-            <div class="mt-4 flex flex-wrap gap-2">
-              <label v-for="side in flagged" :key="side" class="btn btn-primary cursor-pointer">
-                <ImagePlus class="size-4" aria-hidden="true" />
-                Upload another {{ side }} photo
-                <input
-                  type="file"
-                  accept="image/*"
-                  class="sr-only"
-                  @change="onPickAgain(side, $event)"
-                />
-              </label>
-            </div>
-            <details class="mt-4 text-xs">
-              <summary class="cursor-pointer font-medium">Why it was flagged</summary>
-              <p class="mt-1">{{ flaggedWhy.join('; ') }}.</p>
-            </details>
+            <p class="font-display text-xl font-semibold">{{ verdict.title }}</p>
+            <p v-if="verdict.action" class="mt-1 text-sm">{{ verdict.action }}</p>
+            <template v-if="flagged.length">
+              <p class="mt-2 text-sm">
+                The model did not recognize the
+                {{ flagged.length > 1 ? 'front or back' : flagged[0] }}, so the fruit counts as
+                defective.
+              </p>
+              <details class="mt-2 text-xs">
+                <summary class="cursor-pointer font-medium">Why it was flagged</summary>
+                <p class="mt-1">{{ flaggedWhy.join('; ') }}.</p>
+              </details>
+            </template>
+            <p v-if="recorded" class="mt-2 text-xs">Added to the inventory.</p>
           </div>
 
-          <template v-else>
-            <!-- The answer first: the bin and what to do with the fruit -->
-            <div
-              class="mb-4 rounded-lg border border-emerald-100 bg-emerald-100/60 p-4 text-emerald-800"
-            >
-              <p class="font-display text-xl font-semibold">{{ verdict.title }}</p>
-              <p v-if="verdict.action" class="mt-1 text-sm">{{ verdict.action }}</p>
-              <p v-if="recorded" class="mt-2 text-xs">Added to the inventory.</p>
-            </div>
-            <p
-              v-if="inventoryError"
-              role="alert"
-              class="mb-4 rounded-md bg-amber-50 p-3 text-sm text-amber-800"
-            >
-              Not saved to the inventory: {{ inventoryError }}
-              <template v-if="!simple">
-                Both photos must be saved with the fruit. If this keeps happening, check that
-                schema.sql and auth-roles.sql were run in Supabase.
-              </template>
-            </p>
+          <p
+            v-if="inventoryError"
+            role="alert"
+            class="mb-4 rounded-md bg-amber-50 p-3 text-sm text-amber-800"
+          >
+            Not saved to the inventory: {{ inventoryError }}
+            <template v-if="!simple">
+              Both photos must be saved with the fruit. If this keeps happening, check that
+              schema.sql and auth-roles.sql were run in Supabase.
+            </template>
+          </p>
 
+          <template v-if="!flagged.length">
             <PredictionCard v-if="!simple" :item="result" />
 
             <!-- Side by side, so the expert can see which side decided -->
